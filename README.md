@@ -36,7 +36,8 @@ eval "$(register-python-argcomplete dcache-admin)"
 
 Then:
 
-```dcache-admin --help
+```
+dcache-admin --help
 ```
 
 
