@@ -6,23 +6,23 @@ import argparse
 import argcomplete
 import configparser
 import contextlib
+import functools
 import requests
 import pprint
 import logging
 import sys
+import traceback
 import os
 
+from argcomplete import warn
 from requests.packages.urllib3 import disable_warnings
 
+from dcacheclient import client
+
+ROOTLOGGER = logging.getLogger('')
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 LOGGER = logging.getLogger(__name__)
-
-
-def full_path(dir_):
-    if dir_[0] == '~' and not os.path.exists(dir_):
-        dir_ = os.path.expanduser(dir_)
-    return os.path.abspath(dir_)
 
 
 def get_config():
@@ -49,82 +49,45 @@ def get_config():
 
 
 def print_response(response):
+    """
+    Print response.
+    """
     pprint.pprint(response)
 
 
-@contextlib.contextmanager
-def get_session(args):
-    session = requests.Session()
-    if args.username and args.password:
-        LOGGER.debug('HTTP basic authentication: %s' % (args.username))
-        session.auth = (args.username + '#admin', args.password)
-    elif args.certificate and args.private_key:
-        LOGGER.debug('HTTPS X.509 grid authentication: (%s,%s)' % (args.certificate, args.private_key))
-        session.cert = (
-            full_path(args.certificate),
-            full_path(args.private_key))
-    elif args.x509_proxy:
-        LOGGER.debug('HTTPS X.509 grid proxy authentication: %s' % (args.x509_proxy))
-        session.cert = full_path(args.x509_proxy)
-    else:
-        LOGGER.debug('ANONYMOUS authentication')
-
-    if args.no_check_certificate:
-        LOGGER.debug('no_check_certificate: False')
-        session.verify = False
-    elif args.ca_certificate:
-        LOGGER.debug('CA certificate: %s' % args.ca_certificate)
-        session.verify = args.ca_certificate
-    elif args.ca_directory:
-        LOGGER.debug('CA directory: %s' % args.ca_directory)
-        session.verify = args.ca_directory
-    try:
-        yield session
-    except Exception:
-        raise
-    finally:
-        session.close()
+def completer_exception(function):
+    """
+    A decorator that wraps the passed in function and logs
+    exceptions should one occur
+    """
+    @functools.wraps(function)
+    def wrapper(*args, **kwargs):
+        try:
+            return function(*args, **kwargs)
+        except:
+            warn("error")
+            warn(str(traceback.print_exc()))
+            raise
+    return wrapper
 
 
-def query(args, url, operation='get', params=None, data=None):
-    '''
-    '''
-    with get_session(args) as session:
-        operation_mapping = {
-            'put': session.put,
-            'get': session.get,
-            'post': session.post,
-            'delete': session.delete,
-            'head': session.head,
-            'options': session.options}
-        LOGGER.debug('operation: %s', operation)
-        LOGGER.debug('url: %s', url)
-        LOGGER.debug('params: %s', params)
-        LOGGER.debug('data: %s', data)
-        response = operation_mapping[operation](url, params=params, data=data)
-        LOGGER.debug('response.url: %s', response.url)
-        LOGGER.debug('response.status_code: %d', response.status_code)
-        LOGGER.debug('response.text: %s', response.text)
-
-        if operation in ('get') and response.status_code == 200:
-            return response.json()
-
-        if operation in ('post') and response.status_code == 201:
-            return True
-
-        LOGGER.error('response.status_code: %d', response.status_code)
-        LOGGER.error('response.text: %s', response.text)
-        return False
-
-
+@completer_exception
 def path_completer(prefix, parsed_args, **kwargs):
     """
     Completes the argument with a list of paths.
     """
+    dcache = client.Client(
+        username=parsed_args.username, password=parsed_args.password,
+        certificate=parsed_args.certificate, private_key=parsed_args.private_key,
+        x509_proxy=parsed_args.x509_proxy,
+        no_check_certificate=parsed_args.no_check_certificate,
+        ca_certificate=parsed_args.ca_certificate, ca_directory=parsed_args.ca_directory,
+        timeout=parsed_args.timeout)
     path, filename = prefix.rsplit('/', 1)
-    url = parsed_args.url + '/api/v1/namespace/'
-    url += path
-    response = query(parsed_args, url, params={'children': True})
+    response = dcache.namespace.get_file_attributes(
+        url=parsed_args.url,
+        path=path,
+        children=True)
     paths = []
     for child in response['children']:
         normpath = os.path.normpath(path + '/' + child['fileName'])
@@ -134,29 +97,51 @@ def path_completer(prefix, parsed_args, **kwargs):
     return paths
 
 
+@completer_exception
 def pool_completer(prefix, parsed_args, **kwargs):
     """
     Completes the argument with a list of pools.
     """
-    url = parsed_args.url + '/api/v1' + '/pools'
-    response = query(parsed_args, url)
+    dcache = client.Client(
+        username=parsed_args.username, password=parsed_args.password,
+        certificate=parsed_args.certificate, private_key=parsed_args.private_key,
+        x509_proxy=parsed_args.x509_proxy,
+        no_check_certificate=parsed_args.no_check_certificate,
+        ca_certificate=parsed_args.ca_certificate, ca_directory=parsed_args.ca_directory,
+        timeout=parsed_args.timeout)
+    response = dcache.pools.get_pools(url=parsed_args.url)
     return [pool["name"] for pool in response]
 
+
+@completer_exception
 def pool_group_completer(prefix, parsed_args, **kwargs):
     """
     Completes the argument with a list of pool groups.
     """
-    url = parsed_args.url + '/api/v1' + '/poolgroups'
-    response = query(parsed_args, url)
+    dcache = client.Client(
+        username=parsed_args.username, password=parsed_args.password,
+        certificate=parsed_args.certificate, private_key=parsed_args.private_key,
+        x509_proxy=parsed_args.x509_proxy,
+        no_check_certificate=parsed_args.no_check_certificate,
+        ca_certificate=parsed_args.ca_certificate, ca_directory=parsed_args.ca_directory,
+        timeout=parsed_args.timeout)
+    response = dcache.poolmanager.get_pool_groups(url=parsed_args.url)
     return [pool_group["name"] for pool_group in response]
 
 
+@completer_exception
 def cell_address_completer(prefix, parsed_args, **kwargs):
     """
     Completes the argument with a list of cell addresses.
     """
-    url = parsed_args.url + '/api/v1' + '/cells/addresses'
-    response = query(parsed_args, url)
+    dcache = client.Client(
+        username=parsed_args.username, password=parsed_args.password,
+        certificate=parsed_args.certificate, private_key=parsed_args.private_key,
+        x509_proxy=parsed_args.x509_proxy,
+        no_check_certificate=parsed_args.no_check_certificate,
+        ca_certificate=parsed_args.ca_certificate, ca_directory=parsed_args.ca_directory,
+        timeout=parsed_args.timeout)
+    response = dcache.cells. get_addresses(url=parsed_args.url)
     return [cell_address for cell_address in response]
 
 
@@ -166,13 +151,8 @@ def get_qos_list(args):
     List the available quality of services for a specific object type.  Requires authentication.
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    params = {}
-    attrs = ()
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/qos-management/qos/{type}'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="get")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.qos.get_qos_list(**vars(args))
     print_response(response)
 
 
@@ -181,13 +161,8 @@ def get_queried_qos_for_files(args):
     Provide information about a specific file quality of services.  Requires authentication.
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    params = {}
-    attrs = ()
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/qos-management/qos/file/{qos}'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="get")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.qos.get_queried_qos_for_files(**vars(args))
     print_response(response)
 
 
@@ -196,13 +171,8 @@ def get_queried_qos_for_directories(args):
     Provides information about a specific directory quality of services.  Requires authentication.
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    params = {}
-    attrs = ()
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/qos-management/qos/directory/{qos}'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="get")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.qos.get_queried_qos_for_directories(**vars(args))
     print_response(response)
 
 
@@ -211,13 +181,8 @@ def channel_metadata(args):
     Obtain metadata about a channel.
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    params = {}
-    attrs = ()
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/events/channels/{id}'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="get")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.events.channel_metadata(**vars(args))
     print_response(response)
 
 
@@ -226,13 +191,8 @@ def delete(args):
     Cancel a channel.
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    params = {}
-    attrs = ()
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/events/channels/{id}'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="delete")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.events.delete(**vars(args))
     print_response(response)
 
 
@@ -241,14 +201,8 @@ def modify(args):
     Modify a channel.
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    data = args.body
-    params = {}
-    attrs = ()
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/events/channels/{id}'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="patch")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.events.modify(**vars(args))
     print_response(response)
 
 
@@ -257,13 +211,8 @@ def get_channels(args):
     Obtain a list of channels.
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    params = {}
-    attrs = ('client-id')
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/events/channels'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="get")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.events.get_channels(**vars(args))
     print_response(response)
 
 
@@ -272,14 +221,8 @@ def register(args):
     Request a new channel.
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    data = args.body
-    params = {}
-    attrs = ()
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/events/channels'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="post")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.events.register(**vars(args))
     print_response(response)
 
 
@@ -288,13 +231,8 @@ def channel_subscription(args):
     Return the selector of this subscription.
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    params = {}
-    attrs = ()
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/events/channels/{channel_id}/subscriptions/{type}/{subscription_id}'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="get")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.events.channel_subscription(**vars(args))
     print_response(response)
 
 
@@ -303,13 +241,8 @@ def delete(args):
     Cancel a subscription.
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    params = {}
-    attrs = ()
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/events/channels/{channel_id}/subscriptions/{type}/{subscription_id}'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="delete")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.events.delete(**vars(args))
     print_response(response)
 
 
@@ -318,14 +251,8 @@ def subscribe(args):
     Subscribe to events.
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    data = args.body
-    params = {}
-    attrs = ()
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/events/channels/{id}/subscriptions/{type}'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="post")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.events.subscribe(**vars(args))
     print_response(response)
 
 
@@ -334,13 +261,8 @@ def channel_subscriptions(args):
     Obtain list a channel's subscriptions.
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    params = {}
-    attrs = ()
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/events/channels/{id}/subscriptions'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="get")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.events.channel_subscriptions(**vars(args))
     print_response(response)
 
 
@@ -349,13 +271,8 @@ def get_event_types(args):
     Obtain a list of the available event types.
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    params = {}
-    attrs = ()
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/events/eventTypes'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="get")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.events.get_event_types(**vars(args))
     print_response(response)
 
 
@@ -364,13 +281,8 @@ def get_selector_schema(args):
     Obtain the JSON schema for this event type's selectors.
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    params = {}
-    attrs = ()
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/events/eventTypes/{type}/selector'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="get")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.events.get_selector_schema(**vars(args))
     print_response(response)
 
 
@@ -379,13 +291,8 @@ def get_event_schema(args):
     Obtain the JSON schema for events of this event type.
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    params = {}
-    attrs = ()
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/events/eventTypes/{type}/event'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="get")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.events.get_event_schema(**vars(args))
     print_response(response)
 
 
@@ -394,13 +301,8 @@ def service_metadata(args):
     Obtain general information about event support in dCache.
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    params = {}
-    attrs = ()
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/events'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="get")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.events.service_metadata(**vars(args))
     print_response(response)
 
 
@@ -409,13 +311,8 @@ def get_event_type(args):
     Obtain non-schema information about a specific event type.
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    params = {}
-    attrs = ()
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/events/eventTypes/{type}'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="get")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.events.get_event_type(**vars(args))
     print_response(response)
 
 
@@ -424,13 +321,8 @@ def get_priority(args):
     Request the current mapping of an alarm type to its priority. Requires admin role.
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    params = {}
-    attrs = ()
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/alarms/priorities/{type}'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="get")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.alarms.get_priority(**vars(args))
     print_response(response)
 
 
@@ -439,13 +331,8 @@ def get_alarms(args):
     Provides a filtered list of log entries. Requires admin role.
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    params = {}
-    attrs = ('offset', 'limit', 'after', 'before', 'includeClosed', 'severity', 'type', 'host', 'domain', 'service', 'info', 'sort')
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/alarms/logentries'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="get")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.alarms.get_alarms(**vars(args))
     print_response(response)
 
 
@@ -454,14 +341,8 @@ def bulk_update_or_delete(args):
     Batch request to update or delete the indicated alarms. Requires admin role.
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    data = args.body
-    params = {}
-    attrs = ()
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/alarms/logentries'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="patch")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.alarms.bulk_update_or_delete(**vars(args))
     print_response(response)
 
 
@@ -470,13 +351,8 @@ def delete_alarm_entry(args):
     Delete a specific log entry. Requires admin role.
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    params = {}
-    attrs = ()
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/alarms/logentries/{key}'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="delete")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.alarms.delete_alarm_entry(**vars(args))
     print_response(response)
 
 
@@ -485,14 +361,8 @@ def update_alarm_entry(args):
     Request to open or close the indicated log entry. Requires admin role.
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    data = args.body
-    params = {}
-    attrs = ()
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/alarms/logentries/{key}'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="patch")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.alarms.update_alarm_entry(**vars(args))
     print_response(response)
 
 
@@ -501,13 +371,8 @@ def get_priorities(args):
     Request the current mapping of all alarm types to priorities. Requires admin role.
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    params = {}
-    attrs = ()
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/alarms/priorities'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="get")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.alarms.get_priorities(**vars(args))
     print_response(response)
 
 
@@ -516,13 +381,8 @@ def get_data(args):
     Request the time series data for a particular specification. The available specifications can be obtained via GET on histograms/grid/description.
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    params = {}
-    attrs = ()
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/billing/histograms/{key}'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="get")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.billing.get_data(**vars(args))
     print_response(response)
 
 
@@ -531,13 +391,8 @@ def get_p2ps(args):
     Provides a list of pool-to-pool transfers for a specific PNFS-ID.  Requires admin role.
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    params = {}
-    attrs = ('before', 'after', 'limit', 'offset', 'serverPool', 'clientPool', 'client', 'sort')
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/billing/p2ps/{pnfsid}'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="get")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.billing.get_p2ps(**vars(args))
     print_response(response)
 
 
@@ -546,13 +401,8 @@ def get_reads(args):
     Provides a list of read transfers for a specific PNFS-ID.  Requires admin role.
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    params = {}
-    attrs = ('before', 'after', 'limit', 'offset', 'pool', 'door', 'client', 'sort')
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/billing/reads/{pnfsid}'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="get")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.billing.get_reads(**vars(args))
     print_response(response)
 
 
@@ -561,13 +411,8 @@ def get_restores(args):
     Provide a list of tape reads for a specific PNFS-ID.  Requires admin role.
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    params = {}
-    attrs = ('before', 'after', 'limit', 'offset', 'pool', 'sort')
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/billing/restores/{pnfsid}'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="get")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.billing.get_restores(**vars(args))
     print_response(response)
 
 
@@ -576,13 +421,8 @@ def get_stores(args):
     Provides a list of tape writes for a specific PNFS-ID.  Requires admin role.
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    params = {}
-    attrs = ('before', 'after', 'limit', 'offset', 'pool', 'sort')
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/billing/stores/{pnfsid}'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="get")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.billing.get_stores(**vars(args))
     print_response(response)
 
 
@@ -591,13 +431,8 @@ def get_writes(args):
     Provides a list of write transfers for a specific PNFS-ID.  Requires admin role.
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    params = {}
-    attrs = ('before', 'after', 'limit', 'offset', 'pool', 'door', 'client', 'sort')
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/billing/writes/{pnfsid}'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="get")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.billing.get_writes(**vars(args))
     print_response(response)
 
 
@@ -606,13 +441,8 @@ def get_grid(args):
     Provides the list of available histograms with their corresponding identifer.
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    params = {}
-    attrs = ()
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/billing/histograms/grid/description'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="get")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.billing.get_grid(**vars(args))
     print_response(response)
 
 
@@ -621,13 +451,8 @@ def get_grid_data(args):
     Provide the full "grid" of time series data in one pass. Data is sorted lexicographically by key.
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    params = {}
-    attrs = ()
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/billing/histograms'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="get")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.billing.get_grid_data(**vars(args))
     print_response(response)
 
 
@@ -636,13 +461,8 @@ def get_cells(args):
     Provide information about all cells.  Requires admin role. Results sorted lexicographically by cell name.
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    params = {}
-    attrs = ()
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/cells'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="get")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.cells.get_cells(**vars(args))
     print_response(response)
 
 
@@ -651,13 +471,8 @@ def get_cell_data(args):
     Provide information about a specific cell.  Requires admin role.
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    params = {}
-    attrs = ()
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/cells/{address}'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="get")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.cells.get_cell_data(**vars(args))
     print_response(response)
 
 
@@ -666,13 +481,8 @@ def get_addresses(args):
     Get a list of current addresses for well-known cells.  Requires admin role.
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    params = {}
-    attrs = ()
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/cells/addresses'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="get")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.cells.get_addresses(**vars(args))
     print_response(response)
 
 
@@ -681,13 +491,8 @@ def get_user_attributes(args):
     Provide information about the current user.
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    params = {}
-    attrs = ()
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/user'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="get")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.identity.get_user_attributes(**vars(args))
     print_response(response)
 
 
@@ -696,13 +501,8 @@ def get_file_attributes(args):
     Find metadata and optionally directory contents.
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    params = {}
-    attrs = ('children', 'locality', 'locations', 'qos', 'limit', 'offset')
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/namespace/{path}'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="get")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.namespace.get_file_attributes(**vars(args))
     print_response(response)
 
 
@@ -711,14 +511,8 @@ def cmr_resources(args):
     Modify a file or directory.
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    data = args.body
-    params = {}
-    attrs = ()
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/namespace/{path}'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="post")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.namespace.cmr_resources(**vars(args))
     print_response(response)
 
 
@@ -727,13 +521,8 @@ def delete_file_entry(args):
     delete a file or directory
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    params = {}
-    attrs = ()
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/namespace/{path}'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="delete")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.namespace.delete_file_entry(**vars(args))
     print_response(response)
 
 
@@ -742,13 +531,8 @@ def get_attributes(args):
     Discover information about a file from the PNFS-ID.
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    params = {}
-    attrs = ()
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/id/{pnfsid}'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="get")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.namespace.get_attributes(**vars(args))
     print_response(response)
 
 
@@ -757,13 +541,8 @@ def get_pool_groups(args):
     Get a list of poolgroups.  Requires admin role. Results sorted lexicographically by group name.
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    params = {}
-    attrs = ()
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/poolgroups'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="get")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.poolmanager.get_pool_groups(**vars(args))
     print_response(response)
 
 
@@ -772,13 +551,8 @@ def get_pool_group(args):
     Get information about a poolgroup.  Requires admin role.
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    params = {}
-    attrs = ()
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/poolgroups/{group}'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="get")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.poolmanager.get_pool_group(**vars(args))
     print_response(response)
 
 
@@ -787,13 +561,8 @@ def get_pools_of_group(args):
     Get a list of pools that are a member of a poolgroup.  If no poolgroup is specified then all pools are listed. Results sorted lexicographically by pool name.
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    params = {}
-    attrs = ()
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/poolgroups/{group}/pools'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="get")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.poolmanager.get_pools_of_group(**vars(args))
     print_response(response)
 
 
@@ -802,13 +571,8 @@ def get_group_usage(args):
     Get usage metadata about a specific poolgroup.  Requires admin role.
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    params = {}
-    attrs = ()
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/poolgroups/{group}/usage'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="get")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.poolmanager.get_group_usage(**vars(args))
     print_response(response)
 
 
@@ -817,13 +581,8 @@ def get_queue_info(args):
     Get pool activity information about pools of a specific poolgroup.  Requires admin role.
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    params = {}
-    attrs = ()
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/poolgroups/{group}/queues'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="get")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.poolmanager.get_queue_info(**vars(args))
     print_response(response)
 
 
@@ -832,13 +591,8 @@ def get_space_info(args):
     Get space information about pools of a specific poolgroup.  Requires admin role.
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    params = {}
-    attrs = ()
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/poolgroups/{group}/space'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="get")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.poolmanager.get_space_info(**vars(args))
     print_response(response)
 
 
@@ -847,13 +601,8 @@ def get_queue_histograms(args):
     Get aggregated pool activity histogram information from pools in a specific poolgroup.  Requires admin role.
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    params = {}
-    attrs = ()
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/poolgroups/{group}/histograms/queues'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="get")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.poolmanager.get_queue_histograms(**vars(args))
     print_response(response)
 
 
@@ -862,13 +611,8 @@ def get_files_histograms(args):
     Get aggregated file statistics histogram information from pools in a specific poolgroup.  Requires admin role.
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    params = {}
-    attrs = ()
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/poolgroups/{group}/histograms/files'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="get")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.poolmanager.get_files_histograms(**vars(args))
     print_response(response)
 
 
@@ -877,13 +621,8 @@ def get_pool(args):
     Get information about a specific pool (name, group membership, links). Requires admin role.
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    params = {}
-    attrs = ()
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/pools/{pool}'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="get")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.pools.get_pool(**vars(args))
     print_response(response)
 
 
@@ -892,13 +631,8 @@ def get_movers(args):
     Get mover information for a specific pool.  Requires admin role.
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    params = {}
-    attrs = ('type', 'offset', 'limit', 'pnfsid', 'queue', 'state', 'mode', 'door', 'storageClass', 'sort')
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/pools/{pool}/movers'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="get")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.pools.get_movers(**vars(args))
     print_response(response)
 
 
@@ -907,13 +641,8 @@ def get_queue_histograms(args):
     Get histogram data concerning activity on a specific pool (48-hour window).
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    params = {}
-    attrs = ()
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/pools/{pool}/histograms/queues'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="get")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.pools.get_queue_histograms(**vars(args))
     print_response(response)
 
 
@@ -922,13 +651,8 @@ def get_files_histograms(args):
     Get histogram data concerning file lifetime on a specific pool (60-day window).
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    params = {}
-    attrs = ()
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/pools/{pool}/histograms/files'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="get")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.pools.get_files_histograms(**vars(args))
     print_response(response)
 
 
@@ -937,13 +661,8 @@ def get_pool_usage(args):
     Get information about a specific pool (configuration, state, usage).  Requires admin role.
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    params = {}
-    attrs = ()
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/pools/{pool}/usage'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="get")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.pools.get_pool_usage(**vars(args))
     print_response(response)
 
 
@@ -952,13 +671,8 @@ def get_repository_info_for_file(args):
     Get information about a specific PNFS-ID usage within a specific pool.  Requires admin role.
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    params = {}
-    attrs = ()
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/pools/{pool}/{pnfsid}'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="get")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.pools.get_repository_info_for_file(**vars(args))
     print_response(response)
 
 
@@ -967,13 +681,8 @@ def get_nearline_queues(args):
     Get nearline activity information for a specific pool.  Requires admin role.
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    params = {}
-    attrs = ('type', 'offset', 'limit', 'pnfsid', 'state', 'storageClass', 'sort')
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/pools/{pool}/nearline/queues'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="get")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.pools.get_nearline_queues(**vars(args))
     print_response(response)
 
 
@@ -982,13 +691,8 @@ def kill_movers(args):
     Kill a mover.  Requires admin role.
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    params = {}
-    attrs = ()
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/pools/{pool}/movers/{id}'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="delete")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.pools.kill_movers(**vars(args))
     print_response(response)
 
 
@@ -997,14 +701,8 @@ def update_mode(args):
     Modify a pool's mode.  Requires admin role.
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    data = args.body
-    params = {}
-    attrs = ()
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/pools/{pool}/usage/mode'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="patch")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.pools.update_mode(**vars(args))
     print_response(response)
 
 
@@ -1013,13 +711,8 @@ def get_pools(args):
     Get information about all pools (name, group membership, links).  Requires admin role.  Results sorted lexicographically by pool name.
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    params = {}
-    attrs = ()
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/pools'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="get")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.pools.get_pools(**vars(args))
     print_response(response)
 
 
@@ -1028,13 +721,8 @@ def get_restores(args):
     Obtain a (potentially partial) list of restore operations from some snapshot, along with a token that identifies the snapshot.
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    params = {}
-    attrs = ('token', 'offset', 'limit', 'pnfsid', 'subnet', 'pool', 'status', 'sort')
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/restores'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="get")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.pools.get_restores(**vars(args))
     print_response(response)
 
 
@@ -1043,13 +731,8 @@ def get_links(args):
     Get information about all links.  Requires admin role. Results sorted lexicographically by link name.
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    params = {}
-    attrs = ()
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/links'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="get")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.poolmanager.get_links(**vars(args))
     print_response(response)
 
 
@@ -1058,13 +741,8 @@ def get_link_groups(args):
     Get information about all linkgroups.  Requires admin role. Results sorted lexicographically by link group name.
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    params = {}
-    attrs = ()
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/links/groups'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="get")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.poolmanager.get_link_groups(**vars(args))
     print_response(response)
 
 
@@ -1073,13 +751,8 @@ def get_partitions(args):
     Get information about all partitions.  Requires admin role. Results sorted lexicographically by partition name.
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    params = {}
-    attrs = ()
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/partitions'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="get")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.poolmanager.get_partitions(**vars(args))
     print_response(response)
 
 
@@ -1088,13 +761,8 @@ def match(args):
     Describe the pools selected by a particular request.
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    params = {}
-    attrs = ('type', 'store', 'dcache', 'net', 'protocol', 'linkGroup')
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/pool-preferences'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="get")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.poolmanager.match(**vars(args))
     print_response(response)
 
 
@@ -1103,13 +771,8 @@ def get_units(args):
     List all units.  Requires admin role. Results sorted lexicographically by unit name.
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    params = {}
-    attrs = ()
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/units'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="get")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.poolmanager.get_units(**vars(args))
     print_response(response)
 
 
@@ -1118,13 +781,8 @@ def get_unit_groups(args):
     List all unitgroups.  Requires admin role. Results sorted lexicographically by unit group name.
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    params = {}
-    attrs = ()
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/units/groups'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="get")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.poolmanager.get_unit_groups(**vars(args))
     print_response(response)
 
 
@@ -1133,13 +791,8 @@ def get_tokens_for_group(args):
     Get information about space tokens.  Requires admin role.  Results sorted by token id.
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    params = {}
-    attrs = ('id', 'voGroup', 'voRole', 'accessLatency', 'retentionPolicy', 'groupId', 'state', 'minSize', 'minFreeSpace')
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/space/tokens'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="get")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.spacemanager.get_tokens_for_group(**vars(args))
     print_response(response)
 
 
@@ -1148,13 +801,8 @@ def get_link_groups(args):
     Get information about link groups.  Requires admin role. Results sorted lexicographically by link group name.
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    params = {}
-    attrs = ('name', 'id', 'onlineAllowed', 'nearlineAllowed', 'replicaAllowed', 'outputAllowed', 'custodialAllowed', 'voGroup', 'voRole', 'minAvailableSpace')
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/space/linkgroups'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="get")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.spacemanager.get_link_groups(**vars(args))
     print_response(response)
 
 
@@ -1163,13 +811,8 @@ def get_transfers(args):
     Provide a list of all client-initiated transfers that are either queued or currently running.  Internal (pool-to-pool) transfers are excluded.
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    params = {}
-    attrs = ('token', 'offset', 'limit', 'state', 'door', 'domain', 'prot', 'uid', 'gid', 'vomsgroup', 'pnfsid', 'pool', 'client', 'sort')
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    url = args.url + '/api/v1' + '/transfers'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="get")
+    dcache = client.Client(username=args.username, password=args.password, certificate=args.certificate, private_key=args.private_key, x509_proxy=args.x509_proxy, no_check_certificate=args.no_check_certificate, ca_certificate=args.ca_certificate, ca_directory=args.ca_directory, timeout=args.timeout)
+    response = dcache.transfers.get_transfers(**vars(args))
     print_response(response)
 
 
@@ -1178,14 +821,14 @@ def bring_online(args):
     Bring online a file.
     """
     LOGGER.debug('args: %s' % str(args))
-    data = None
-    params = {}
-    attrs = ()
-    for attr in attrs:
-        params[attr] = getattr(args, attr)
-    data = '{"action": "qos", "target": "disk+tape"}'
-    url = args.url + '/api/v1' + '/namespace/{path}'.format(**vars(args))
-    response = query(args, url, data=data, params=params, operation="post")
+    dcache = client.Client(
+        username=args.username, password=args.password,
+        certificate=args.certificate, private_key=args.private_key,
+        x509_proxy=args.x509_proxy,
+        no_check_certificate=args.no_check_certificate,
+        ca_certificate=args.ca_certificate, ca_directory=args.ca_directory,
+        timeout=args.timeout)
+    response = dcache.namespace.bring_online(url=args.url, path=args.path)
     print_response(response)
 
 
@@ -1205,6 +848,12 @@ def get_parser(config):
         '--url', dest="url",
         help="The service url.",
         default=config.get('default', 'url', fallback='https://localhost:3880'))
+
+    oparser.add_argument(
+        '-t', '--timeout', dest='timeout',
+        action="store", type=int,
+        default=config.get('default', 'timeout', fallback=None),
+        help='Timeout in seconds.')
 
     # Options for userpass
     oparser.add_argument(
@@ -1929,7 +1578,7 @@ def main():
     argcomplete.autocomplete(oparser)
     args = oparser.parse_args(sys.argv[1:])
     if args.debug:
-        LOGGER.setLevel(logging.DEBUG)
+        ROOTLOGGER.setLevel(logging.DEBUG)
 
     disable_warnings()
     if args.func.__name__ == 'print_help':
