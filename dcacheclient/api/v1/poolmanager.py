@@ -28,7 +28,7 @@ class poolmanagerApi(object):
         attrs = ()
         for attr in attrs:
             params[attr] = kwargs.get(attr)
-        url = kwargs['url'] + '/api/v1' + '/poolgroups'.format(**kwargs)
+        url = self.client.url + '/api/v1' + '/poolgroups'.format(**kwargs)
         response = self.client.call_api(kwargs, url, data=data, params=params, operation="get")
         return response
     
@@ -43,7 +43,7 @@ class poolmanagerApi(object):
         attrs = ()
         for attr in attrs:
             params[attr] = kwargs.get(attr)
-        url = kwargs['url'] + '/api/v1' + '/poolgroups/{group}'.format(**kwargs)
+        url = self.client.url + '/api/v1' + '/poolgroups/{group}'.format(**kwargs)
         response = self.client.call_api(kwargs, url, data=data, params=params, operation="get")
         return response
     
@@ -58,7 +58,7 @@ class poolmanagerApi(object):
         attrs = ()
         for attr in attrs:
             params[attr] = kwargs.get(attr)
-        url = kwargs['url'] + '/api/v1' + '/poolgroups/{group}/pools'.format(**kwargs)
+        url = self.client.url + '/api/v1' + '/poolgroups/{group}/pools'.format(**kwargs)
         response = self.client.call_api(kwargs, url, data=data, params=params, operation="get")
         return response
     
@@ -73,7 +73,7 @@ class poolmanagerApi(object):
         attrs = ()
         for attr in attrs:
             params[attr] = kwargs.get(attr)
-        url = kwargs['url'] + '/api/v1' + '/poolgroups/{group}/usage'.format(**kwargs)
+        url = self.client.url + '/api/v1' + '/poolgroups/{group}/usage'.format(**kwargs)
         response = self.client.call_api(kwargs, url, data=data, params=params, operation="get")
         return response
     
@@ -88,7 +88,7 @@ class poolmanagerApi(object):
         attrs = ()
         for attr in attrs:
             params[attr] = kwargs.get(attr)
-        url = kwargs['url'] + '/api/v1' + '/poolgroups/{group}/queues'.format(**kwargs)
+        url = self.client.url + '/api/v1' + '/poolgroups/{group}/queues'.format(**kwargs)
         response = self.client.call_api(kwargs, url, data=data, params=params, operation="get")
         return response
     
@@ -103,7 +103,7 @@ class poolmanagerApi(object):
         attrs = ()
         for attr in attrs:
             params[attr] = kwargs.get(attr)
-        url = kwargs['url'] + '/api/v1' + '/poolgroups/{group}/space'.format(**kwargs)
+        url = self.client.url + '/api/v1' + '/poolgroups/{group}/space'.format(**kwargs)
         response = self.client.call_api(kwargs, url, data=data, params=params, operation="get")
         return response
     
@@ -118,7 +118,7 @@ class poolmanagerApi(object):
         attrs = ()
         for attr in attrs:
             params[attr] = kwargs.get(attr)
-        url = kwargs['url'] + '/api/v1' + '/poolgroups/{group}/histograms/queues'.format(**kwargs)
+        url = self.client.url + '/api/v1' + '/poolgroups/{group}/histograms/queues'.format(**kwargs)
         response = self.client.call_api(kwargs, url, data=data, params=params, operation="get")
         return response
     
@@ -133,7 +133,7 @@ class poolmanagerApi(object):
         attrs = ()
         for attr in attrs:
             params[attr] = kwargs.get(attr)
-        url = kwargs['url'] + '/api/v1' + '/poolgroups/{group}/histograms/files'.format(**kwargs)
+        url = self.client.url + '/api/v1' + '/poolgroups/{group}/histograms/files'.format(**kwargs)
         response = self.client.call_api(kwargs, url, data=data, params=params, operation="get")
         return response
     
@@ -148,7 +148,7 @@ class poolmanagerApi(object):
         attrs = ()
         for attr in attrs:
             params[attr] = kwargs.get(attr)
-        url = kwargs['url'] + '/api/v1' + '/links'.format(**kwargs)
+        url = self.client.url + '/api/v1' + '/links'.format(**kwargs)
         response = self.client.call_api(kwargs, url, data=data, params=params, operation="get")
         return response
     
@@ -163,7 +163,7 @@ class poolmanagerApi(object):
         attrs = ()
         for attr in attrs:
             params[attr] = kwargs.get(attr)
-        url = kwargs['url'] + '/api/v1' + '/links/groups'.format(**kwargs)
+        url = self.client.url + '/api/v1' + '/links/groups'.format(**kwargs)
         response = self.client.call_api(kwargs, url, data=data, params=params, operation="get")
         return response
     
@@ -178,7 +178,7 @@ class poolmanagerApi(object):
         attrs = ()
         for attr in attrs:
             params[attr] = kwargs.get(attr)
-        url = kwargs['url'] + '/api/v1' + '/partitions'.format(**kwargs)
+        url = self.client.url + '/api/v1' + '/partitions'.format(**kwargs)
         response = self.client.call_api(kwargs, url, data=data, params=params, operation="get")
         return response
     
@@ -193,7 +193,7 @@ class poolmanagerApi(object):
         attrs = ('type', 'store', 'dcache', 'net', 'protocol', 'linkGroup')
         for attr in attrs:
             params[attr] = kwargs.get(attr)
-        url = kwargs['url'] + '/api/v1' + '/pool-preferences'.format(**kwargs)
+        url = self.client.url + '/api/v1' + '/pool-preferences'.format(**kwargs)
         response = self.client.call_api(kwargs, url, data=data, params=params, operation="get")
         return response
     
@@ -208,7 +208,7 @@ class poolmanagerApi(object):
         attrs = ()
         for attr in attrs:
             params[attr] = kwargs.get(attr)
-        url = kwargs['url'] + '/api/v1' + '/units'.format(**kwargs)
+        url = self.client.url + '/api/v1' + '/units'.format(**kwargs)
         response = self.client.call_api(kwargs, url, data=data, params=params, operation="get")
         return response
     
@@ -223,7 +223,7 @@ class poolmanagerApi(object):
         attrs = ()
         for attr in attrs:
             params[attr] = kwargs.get(attr)
-        url = kwargs['url'] + '/api/v1' + '/units/groups'.format(**kwargs)
+        url = self.client.url + '/api/v1' + '/units/groups'.format(**kwargs)
         response = self.client.call_api(kwargs, url, data=data, params=params, operation="get")
         return response
     

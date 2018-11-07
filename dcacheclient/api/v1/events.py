@@ -28,7 +28,7 @@ class eventsApi(object):
         attrs = ()
         for attr in attrs:
             params[attr] = kwargs.get(attr)
-        url = kwargs['url'] + '/api/v1' + '/events/channels/{id}'.format(**kwargs)
+        url = self.client.url + '/api/v1' + '/events/channels/{id}'.format(**kwargs)
         response = self.client.call_api(kwargs, url, data=data, params=params, operation="get")
         return response
     
@@ -43,7 +43,7 @@ class eventsApi(object):
         attrs = ()
         for attr in attrs:
             params[attr] = kwargs.get(attr)
-        url = kwargs['url'] + '/api/v1' + '/events/channels/{id}'.format(**kwargs)
+        url = self.client.url + '/api/v1' + '/events/channels/{id}'.format(**kwargs)
         response = self.client.call_api(kwargs, url, data=data, params=params, operation="delete")
         return response
     
@@ -59,7 +59,7 @@ class eventsApi(object):
         attrs = ()
         for attr in attrs:
             params[attr] = kwargs.get(attr)
-        url = kwargs['url'] + '/api/v1' + '/events/channels/{id}'.format(**kwargs)
+        url = self.client.url + '/api/v1' + '/events/channels/{id}'.format(**kwargs)
         response = self.client.call_api(kwargs, url, data=data, params=params, operation="patch")
         return response
     
@@ -74,7 +74,7 @@ class eventsApi(object):
         attrs = ('client-id')
         for attr in attrs:
             params[attr] = kwargs.get(attr)
-        url = kwargs['url'] + '/api/v1' + '/events/channels'.format(**kwargs)
+        url = self.client.url + '/api/v1' + '/events/channels'.format(**kwargs)
         response = self.client.call_api(kwargs, url, data=data, params=params, operation="get")
         return response
     
@@ -90,7 +90,7 @@ class eventsApi(object):
         attrs = ()
         for attr in attrs:
             params[attr] = kwargs.get(attr)
-        url = kwargs['url'] + '/api/v1' + '/events/channels'.format(**kwargs)
+        url = self.client.url + '/api/v1' + '/events/channels'.format(**kwargs)
         response = self.client.call_api(kwargs, url, data=data, params=params, operation="post")
         return response
     
@@ -105,7 +105,7 @@ class eventsApi(object):
         attrs = ()
         for attr in attrs:
             params[attr] = kwargs.get(attr)
-        url = kwargs['url'] + '/api/v1' + '/events/channels/{channel_id}/subscriptions/{type}/{subscription_id}'.format(**kwargs)
+        url = self.client.url + '/api/v1' + '/events/channels/{channel_id}/subscriptions/{type}/{subscription_id}'.format(**kwargs)
         response = self.client.call_api(kwargs, url, data=data, params=params, operation="get")
         return response
     
@@ -120,7 +120,7 @@ class eventsApi(object):
         attrs = ()
         for attr in attrs:
             params[attr] = kwargs.get(attr)
-        url = kwargs['url'] + '/api/v1' + '/events/channels/{channel_id}/subscriptions/{type}/{subscription_id}'.format(**kwargs)
+        url = self.client.url + '/api/v1' + '/events/channels/{channel_id}/subscriptions/{type}/{subscription_id}'.format(**kwargs)
         response = self.client.call_api(kwargs, url, data=data, params=params, operation="delete")
         return response
     
@@ -136,7 +136,7 @@ class eventsApi(object):
         attrs = ()
         for attr in attrs:
             params[attr] = kwargs.get(attr)
-        url = kwargs['url'] + '/api/v1' + '/events/channels/{id}/subscriptions/{type}'.format(**kwargs)
+        url = self.client.url + '/api/v1' + '/events/channels/{id}/subscriptions/{type}'.format(**kwargs)
         response = self.client.call_api(kwargs, url, data=data, params=params, operation="post")
         return response
     
@@ -151,7 +151,7 @@ class eventsApi(object):
         attrs = ()
         for attr in attrs:
             params[attr] = kwargs.get(attr)
-        url = kwargs['url'] + '/api/v1' + '/events/channels/{id}/subscriptions'.format(**kwargs)
+        url = self.client.url + '/api/v1' + '/events/channels/{id}/subscriptions'.format(**kwargs)
         response = self.client.call_api(kwargs, url, data=data, params=params, operation="get")
         return response
     
@@ -166,7 +166,7 @@ class eventsApi(object):
         attrs = ()
         for attr in attrs:
             params[attr] = kwargs.get(attr)
-        url = kwargs['url'] + '/api/v1' + '/events/eventTypes'.format(**kwargs)
+        url = self.client.url + '/api/v1' + '/events/eventTypes'.format(**kwargs)
         response = self.client.call_api(kwargs, url, data=data, params=params, operation="get")
         return response
     
@@ -181,7 +181,7 @@ class eventsApi(object):
         attrs = ()
         for attr in attrs:
             params[attr] = kwargs.get(attr)
-        url = kwargs['url'] + '/api/v1' + '/events/eventTypes/{type}/selector'.format(**kwargs)
+        url = self.client.url + '/api/v1' + '/events/eventTypes/{type}/selector'.format(**kwargs)
         response = self.client.call_api(kwargs, url, data=data, params=params, operation="get")
         return response
     
@@ -196,7 +196,7 @@ class eventsApi(object):
         attrs = ()
         for attr in attrs:
             params[attr] = kwargs.get(attr)
-        url = kwargs['url'] + '/api/v1' + '/events/eventTypes/{type}/event'.format(**kwargs)
+        url = self.client.url + '/api/v1' + '/events/eventTypes/{type}/event'.format(**kwargs)
         response = self.client.call_api(kwargs, url, data=data, params=params, operation="get")
         return response
     
@@ -211,7 +211,7 @@ class eventsApi(object):
         attrs = ()
         for attr in attrs:
             params[attr] = kwargs.get(attr)
-        url = kwargs['url'] + '/api/v1' + '/events'.format(**kwargs)
+        url = self.client.url + '/api/v1' + '/events'.format(**kwargs)
         response = self.client.call_api(kwargs, url, data=data, params=params, operation="get")
         return response
     
@@ -226,7 +226,7 @@ class eventsApi(object):
         attrs = ()
         for attr in attrs:
             params[attr] = kwargs.get(attr)
-        url = kwargs['url'] + '/api/v1' + '/events/eventTypes/{type}'.format(**kwargs)
+        url = self.client.url + '/api/v1' + '/events/eventTypes/{type}'.format(**kwargs)
         response = self.client.call_api(kwargs, url, data=data, params=params, operation="get")
         return response
     

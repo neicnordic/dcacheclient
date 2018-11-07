@@ -28,7 +28,7 @@ class transfersApi(object):
         attrs = ('token', 'offset', 'limit', 'state', 'door', 'domain', 'prot', 'uid', 'gid', 'vomsgroup', 'pnfsid', 'pool', 'client', 'sort')
         for attr in attrs:
             params[attr] = kwargs.get(attr)
-        url = kwargs['url'] + '/api/v1' + '/transfers'.format(**kwargs)
+        url = self.client.url + '/api/v1' + '/transfers'.format(**kwargs)
         response = self.client.call_api(kwargs, url, data=data, params=params, operation="get")
         return response
     

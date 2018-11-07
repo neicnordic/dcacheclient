@@ -27,11 +27,13 @@ class Client(object):
     Client for the dCache API.
     """
 
-    def __init__(self, session=None, username=None, password=None, certificate=None,
+    def __init__(self, url, session=None, username=None, password=None, certificate=None,
                 private_key=None, x509_proxy=None, no_check_certificate=True,
                 ca_certificate=None, ca_directory=None, timeout=None,
                 version="v1"):
         """
+        :param string url: A user-supplied endpoint URL for the dCache service.
+                           http(s)://$HOST:$PORT/
         :param session: A session object to be used for communication. If one is
                     not provided it will be constructed from the provided
                     kwargs. (optional)
@@ -49,6 +51,7 @@ class Client(object):
         :param timeout: socket read timeout value, passed directly to the requests library.
         :param string version: The version of API to use.
         """
+        self.url = url
         self.username = username
         self.password = password
         self.certificate = certificate
@@ -90,7 +93,7 @@ class Client(object):
             self.session = session
 
 # % for imp in imports:
-#  self.${imp} = ${imp}.${imp}Api(client=self.session)
+#  self.${imp} = ${imp}.${imp}Api(client=self)
 # % endfor
         self.alarms = alarms.alarmsApi(client=self)
         self.billing = billing.billingApi(client=self)
@@ -103,6 +106,7 @@ class Client(object):
         self.spacemanager = spacemanager.spacemanagerApi(client=self)
         self.transfers = transfers.transfersApi(client=self)
         self.events = events.eventsApi(client=self)
+
 
     def call_api(self, args, url, operation='get', params=None, data=None):
         '''
@@ -132,3 +136,4 @@ class Client(object):
         LOGGER.error('response.status_code: %d', response.status_code)
         LOGGER.error('response.text: %s', response.text)
         return False
+

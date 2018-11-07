@@ -28,7 +28,7 @@ class qosApi(object):
         attrs = ()
         for attr in attrs:
             params[attr] = kwargs.get(attr)
-        url = kwargs['url'] + '/api/v1' + '/qos-management/qos/{type}'.format(**kwargs)
+        url = self.client.url + '/api/v1' + '/qos-management/qos/{type}'.format(**kwargs)
         response = self.client.call_api(kwargs, url, data=data, params=params, operation="get")
         return response
     
@@ -43,7 +43,7 @@ class qosApi(object):
         attrs = ()
         for attr in attrs:
             params[attr] = kwargs.get(attr)
-        url = kwargs['url'] + '/api/v1' + '/qos-management/qos/file/{qos}'.format(**kwargs)
+        url = self.client.url + '/api/v1' + '/qos-management/qos/file/{qos}'.format(**kwargs)
         response = self.client.call_api(kwargs, url, data=data, params=params, operation="get")
         return response
     
@@ -58,7 +58,7 @@ class qosApi(object):
         attrs = ()
         for attr in attrs:
             params[attr] = kwargs.get(attr)
-        url = kwargs['url'] + '/api/v1' + '/qos-management/qos/directory/{qos}'.format(**kwargs)
+        url = self.client.url + '/api/v1' + '/qos-management/qos/directory/{qos}'.format(**kwargs)
         response = self.client.call_api(kwargs, url, data=data, params=params, operation="get")
         return response
     

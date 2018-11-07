@@ -28,7 +28,7 @@ class billingApi(object):
         attrs = ()
         for attr in attrs:
             params[attr] = kwargs.get(attr)
-        url = kwargs['url'] + '/api/v1' + '/billing/histograms/{key}'.format(**kwargs)
+        url = self.client.url + '/api/v1' + '/billing/histograms/{key}'.format(**kwargs)
         response = self.client.call_api(kwargs, url, data=data, params=params, operation="get")
         return response
     
@@ -43,7 +43,7 @@ class billingApi(object):
         attrs = ('before', 'after', 'limit', 'offset', 'serverPool', 'clientPool', 'client', 'sort')
         for attr in attrs:
             params[attr] = kwargs.get(attr)
-        url = kwargs['url'] + '/api/v1' + '/billing/p2ps/{pnfsid}'.format(**kwargs)
+        url = self.client.url + '/api/v1' + '/billing/p2ps/{pnfsid}'.format(**kwargs)
         response = self.client.call_api(kwargs, url, data=data, params=params, operation="get")
         return response
     
@@ -58,7 +58,7 @@ class billingApi(object):
         attrs = ('before', 'after', 'limit', 'offset', 'pool', 'door', 'client', 'sort')
         for attr in attrs:
             params[attr] = kwargs.get(attr)
-        url = kwargs['url'] + '/api/v1' + '/billing/reads/{pnfsid}'.format(**kwargs)
+        url = self.client.url + '/api/v1' + '/billing/reads/{pnfsid}'.format(**kwargs)
         response = self.client.call_api(kwargs, url, data=data, params=params, operation="get")
         return response
     
@@ -73,7 +73,7 @@ class billingApi(object):
         attrs = ('before', 'after', 'limit', 'offset', 'pool', 'sort')
         for attr in attrs:
             params[attr] = kwargs.get(attr)
-        url = kwargs['url'] + '/api/v1' + '/billing/restores/{pnfsid}'.format(**kwargs)
+        url = self.client.url + '/api/v1' + '/billing/restores/{pnfsid}'.format(**kwargs)
         response = self.client.call_api(kwargs, url, data=data, params=params, operation="get")
         return response
     
@@ -88,7 +88,7 @@ class billingApi(object):
         attrs = ('before', 'after', 'limit', 'offset', 'pool', 'sort')
         for attr in attrs:
             params[attr] = kwargs.get(attr)
-        url = kwargs['url'] + '/api/v1' + '/billing/stores/{pnfsid}'.format(**kwargs)
+        url = self.client.url + '/api/v1' + '/billing/stores/{pnfsid}'.format(**kwargs)
         response = self.client.call_api(kwargs, url, data=data, params=params, operation="get")
         return response
     
@@ -103,7 +103,7 @@ class billingApi(object):
         attrs = ('before', 'after', 'limit', 'offset', 'pool', 'door', 'client', 'sort')
         for attr in attrs:
             params[attr] = kwargs.get(attr)
-        url = kwargs['url'] + '/api/v1' + '/billing/writes/{pnfsid}'.format(**kwargs)
+        url = self.client.url + '/api/v1' + '/billing/writes/{pnfsid}'.format(**kwargs)
         response = self.client.call_api(kwargs, url, data=data, params=params, operation="get")
         return response
     
@@ -118,7 +118,7 @@ class billingApi(object):
         attrs = ()
         for attr in attrs:
             params[attr] = kwargs.get(attr)
-        url = kwargs['url'] + '/api/v1' + '/billing/histograms/grid/description'.format(**kwargs)
+        url = self.client.url + '/api/v1' + '/billing/histograms/grid/description'.format(**kwargs)
         response = self.client.call_api(kwargs, url, data=data, params=params, operation="get")
         return response
     
@@ -133,7 +133,7 @@ class billingApi(object):
         attrs = ()
         for attr in attrs:
             params[attr] = kwargs.get(attr)
-        url = kwargs['url'] + '/api/v1' + '/billing/histograms'.format(**kwargs)
+        url = self.client.url + '/api/v1' + '/billing/histograms'.format(**kwargs)
         response = self.client.call_api(kwargs, url, data=data, params=params, operation="get")
         return response
     

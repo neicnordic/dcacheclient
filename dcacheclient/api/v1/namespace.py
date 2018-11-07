@@ -28,7 +28,7 @@ class namespaceApi(object):
         attrs = ('children', 'locality', 'locations', 'qos', 'limit', 'offset')
         for attr in attrs:
             params[attr] = kwargs.get(attr)
-        url = kwargs['url'] + '/api/v1' + '/namespace/{path}'.format(**kwargs)
+        url = self.client.url + '/api/v1' + '/namespace/{path}'.format(**kwargs)
         response = self.client.call_api(kwargs, url, data=data, params=params, operation="get")
         return response
     
@@ -44,7 +44,7 @@ class namespaceApi(object):
         attrs = ()
         for attr in attrs:
             params[attr] = kwargs.get(attr)
-        url = kwargs['url'] + '/api/v1' + '/namespace/{path}'.format(**kwargs)
+        url = self.client.url + '/api/v1' + '/namespace/{path}'.format(**kwargs)
         response = self.client.call_api(kwargs, url, data=data, params=params, operation="post")
         return response
     
@@ -59,7 +59,7 @@ class namespaceApi(object):
         attrs = ()
         for attr in attrs:
             params[attr] = kwargs.get(attr)
-        url = kwargs['url'] + '/api/v1' + '/namespace/{path}'.format(**kwargs)
+        url = self.client.url + '/api/v1' + '/namespace/{path}'.format(**kwargs)
         response = self.client.call_api(kwargs, url, data=data, params=params, operation="delete")
         return response
     
@@ -74,13 +74,13 @@ class namespaceApi(object):
         attrs = ()
         for attr in attrs:
             params[attr] = kwargs.get(attr)
-        url = kwargs['url'] + '/api/v1' + '/id/{pnfsid}'.format(**kwargs)
+        url = self.client.url + '/api/v1' + '/id/{pnfsid}'.format(**kwargs)
         response = self.client.call_api(kwargs, url, data=data, params=params, operation="get")
         return response
     
 
-    def bring_online(self, url, path):
+    def bring_online(self, path):
         return self.cmr_resources(
-            url=url,
+            url=self.client.url,
             path=path,
             body='{"action": "qos", "target": "disk+tape"}')

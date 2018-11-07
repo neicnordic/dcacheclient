@@ -28,7 +28,7 @@ class cellsApi(object):
         attrs = ()
         for attr in attrs:
             params[attr] = kwargs.get(attr)
-        url = kwargs['url'] + '/api/v1' + '/cells'.format(**kwargs)
+        url = self.client.url + '/api/v1' + '/cells'.format(**kwargs)
         response = self.client.call_api(kwargs, url, data=data, params=params, operation="get")
         return response
     
@@ -43,7 +43,7 @@ class cellsApi(object):
         attrs = ()
         for attr in attrs:
             params[attr] = kwargs.get(attr)
-        url = kwargs['url'] + '/api/v1' + '/cells/{address}'.format(**kwargs)
+        url = self.client.url + '/api/v1' + '/cells/{address}'.format(**kwargs)
         response = self.client.call_api(kwargs, url, data=data, params=params, operation="get")
         return response
     
@@ -58,7 +58,7 @@ class cellsApi(object):
         attrs = ()
         for attr in attrs:
             params[attr] = kwargs.get(attr)
-        url = kwargs['url'] + '/api/v1' + '/cells/addresses'.format(**kwargs)
+        url = self.client.url + '/api/v1' + '/cells/addresses'.format(**kwargs)
         response = self.client.call_api(kwargs, url, data=data, params=params, operation="get")
         return response
     

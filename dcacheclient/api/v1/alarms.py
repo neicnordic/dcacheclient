@@ -28,7 +28,7 @@ class alarmsApi(object):
         attrs = ()
         for attr in attrs:
             params[attr] = kwargs.get(attr)
-        url = kwargs['url'] + '/api/v1' + '/alarms/priorities/{type}'.format(**kwargs)
+        url = self.client.url + '/api/v1' + '/alarms/priorities/{type}'.format(**kwargs)
         response = self.client.call_api(kwargs, url, data=data, params=params, operation="get")
         return response
     
@@ -43,7 +43,7 @@ class alarmsApi(object):
         attrs = ('offset', 'limit', 'after', 'before', 'includeClosed', 'severity', 'type', 'host', 'domain', 'service', 'info', 'sort')
         for attr in attrs:
             params[attr] = kwargs.get(attr)
-        url = kwargs['url'] + '/api/v1' + '/alarms/logentries'.format(**kwargs)
+        url = self.client.url + '/api/v1' + '/alarms/logentries'.format(**kwargs)
         response = self.client.call_api(kwargs, url, data=data, params=params, operation="get")
         return response
     
@@ -59,7 +59,7 @@ class alarmsApi(object):
         attrs = ()
         for attr in attrs:
             params[attr] = kwargs.get(attr)
-        url = kwargs['url'] + '/api/v1' + '/alarms/logentries'.format(**kwargs)
+        url = self.client.url + '/api/v1' + '/alarms/logentries'.format(**kwargs)
         response = self.client.call_api(kwargs, url, data=data, params=params, operation="patch")
         return response
     
@@ -74,7 +74,7 @@ class alarmsApi(object):
         attrs = ()
         for attr in attrs:
             params[attr] = kwargs.get(attr)
-        url = kwargs['url'] + '/api/v1' + '/alarms/logentries/{key}'.format(**kwargs)
+        url = self.client.url + '/api/v1' + '/alarms/logentries/{key}'.format(**kwargs)
         response = self.client.call_api(kwargs, url, data=data, params=params, operation="delete")
         return response
     
@@ -90,7 +90,7 @@ class alarmsApi(object):
         attrs = ()
         for attr in attrs:
             params[attr] = kwargs.get(attr)
-        url = kwargs['url'] + '/api/v1' + '/alarms/logentries/{key}'.format(**kwargs)
+        url = self.client.url + '/api/v1' + '/alarms/logentries/{key}'.format(**kwargs)
         response = self.client.call_api(kwargs, url, data=data, params=params, operation="patch")
         return response
     
@@ -105,7 +105,7 @@ class alarmsApi(object):
         attrs = ()
         for attr in attrs:
             params[attr] = kwargs.get(attr)
-        url = kwargs['url'] + '/api/v1' + '/alarms/priorities'.format(**kwargs)
+        url = self.client.url + '/api/v1' + '/alarms/priorities'.format(**kwargs)
         response = self.client.call_api(kwargs, url, data=data, params=params, operation="get")
         return response
     

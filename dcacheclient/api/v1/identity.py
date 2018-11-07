@@ -28,7 +28,7 @@ class identityApi(object):
         attrs = ()
         for attr in attrs:
             params[attr] = kwargs.get(attr)
-        url = kwargs['url'] + '/api/v1' + '/user'.format(**kwargs)
+        url = self.client.url + '/api/v1' + '/user'.format(**kwargs)
         response = self.client.call_api(kwargs, url, data=data, params=params, operation="get")
         return response
     

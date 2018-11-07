@@ -28,7 +28,7 @@ class poolsApi(object):
         attrs = ()
         for attr in attrs:
             params[attr] = kwargs.get(attr)
-        url = kwargs['url'] + '/api/v1' + '/pools/{pool}'.format(**kwargs)
+        url = self.client.url + '/api/v1' + '/pools/{pool}'.format(**kwargs)
         response = self.client.call_api(kwargs, url, data=data, params=params, operation="get")
         return response
     
@@ -43,7 +43,7 @@ class poolsApi(object):
         attrs = ('type', 'offset', 'limit', 'pnfsid', 'queue', 'state', 'mode', 'door', 'storageClass', 'sort')
         for attr in attrs:
             params[attr] = kwargs.get(attr)
-        url = kwargs['url'] + '/api/v1' + '/pools/{pool}/movers'.format(**kwargs)
+        url = self.client.url + '/api/v1' + '/pools/{pool}/movers'.format(**kwargs)
         response = self.client.call_api(kwargs, url, data=data, params=params, operation="get")
         return response
     
@@ -58,7 +58,7 @@ class poolsApi(object):
         attrs = ()
         for attr in attrs:
             params[attr] = kwargs.get(attr)
-        url = kwargs['url'] + '/api/v1' + '/pools/{pool}/histograms/queues'.format(**kwargs)
+        url = self.client.url + '/api/v1' + '/pools/{pool}/histograms/queues'.format(**kwargs)
         response = self.client.call_api(kwargs, url, data=data, params=params, operation="get")
         return response
     
@@ -73,7 +73,7 @@ class poolsApi(object):
         attrs = ()
         for attr in attrs:
             params[attr] = kwargs.get(attr)
-        url = kwargs['url'] + '/api/v1' + '/pools/{pool}/histograms/files'.format(**kwargs)
+        url = self.client.url + '/api/v1' + '/pools/{pool}/histograms/files'.format(**kwargs)
         response = self.client.call_api(kwargs, url, data=data, params=params, operation="get")
         return response
     
@@ -88,7 +88,7 @@ class poolsApi(object):
         attrs = ()
         for attr in attrs:
             params[attr] = kwargs.get(attr)
-        url = kwargs['url'] + '/api/v1' + '/pools/{pool}/usage'.format(**kwargs)
+        url = self.client.url + '/api/v1' + '/pools/{pool}/usage'.format(**kwargs)
         response = self.client.call_api(kwargs, url, data=data, params=params, operation="get")
         return response
     
@@ -103,7 +103,7 @@ class poolsApi(object):
         attrs = ()
         for attr in attrs:
             params[attr] = kwargs.get(attr)
-        url = kwargs['url'] + '/api/v1' + '/pools/{pool}/{pnfsid}'.format(**kwargs)
+        url = self.client.url + '/api/v1' + '/pools/{pool}/{pnfsid}'.format(**kwargs)
         response = self.client.call_api(kwargs, url, data=data, params=params, operation="get")
         return response
     
@@ -118,7 +118,7 @@ class poolsApi(object):
         attrs = ('type', 'offset', 'limit', 'pnfsid', 'state', 'storageClass', 'sort')
         for attr in attrs:
             params[attr] = kwargs.get(attr)
-        url = kwargs['url'] + '/api/v1' + '/pools/{pool}/nearline/queues'.format(**kwargs)
+        url = self.client.url + '/api/v1' + '/pools/{pool}/nearline/queues'.format(**kwargs)
         response = self.client.call_api(kwargs, url, data=data, params=params, operation="get")
         return response
     
@@ -133,7 +133,7 @@ class poolsApi(object):
         attrs = ()
         for attr in attrs:
             params[attr] = kwargs.get(attr)
-        url = kwargs['url'] + '/api/v1' + '/pools/{pool}/movers/{id}'.format(**kwargs)
+        url = self.client.url + '/api/v1' + '/pools/{pool}/movers/{id}'.format(**kwargs)
         response = self.client.call_api(kwargs, url, data=data, params=params, operation="delete")
         return response
     
@@ -149,7 +149,7 @@ class poolsApi(object):
         attrs = ()
         for attr in attrs:
             params[attr] = kwargs.get(attr)
-        url = kwargs['url'] + '/api/v1' + '/pools/{pool}/usage/mode'.format(**kwargs)
+        url = self.client.url + '/api/v1' + '/pools/{pool}/usage/mode'.format(**kwargs)
         response = self.client.call_api(kwargs, url, data=data, params=params, operation="patch")
         return response
     
@@ -164,7 +164,7 @@ class poolsApi(object):
         attrs = ()
         for attr in attrs:
             params[attr] = kwargs.get(attr)
-        url = kwargs['url'] + '/api/v1' + '/pools'.format(**kwargs)
+        url = self.client.url + '/api/v1' + '/pools'.format(**kwargs)
         response = self.client.call_api(kwargs, url, data=data, params=params, operation="get")
         return response
     
@@ -179,7 +179,7 @@ class poolsApi(object):
         attrs = ('token', 'offset', 'limit', 'pnfsid', 'subnet', 'pool', 'status', 'sort')
         for attr in attrs:
             params[attr] = kwargs.get(attr)
-        url = kwargs['url'] + '/api/v1' + '/restores'.format(**kwargs)
+        url = self.client.url + '/api/v1' + '/restores'.format(**kwargs)
         response = self.client.call_api(kwargs, url, data=data, params=params, operation="get")
         return response
     
