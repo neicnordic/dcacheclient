@@ -5,10 +5,6 @@ dCache client library.
 import requests
 import logging
 
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-LOGGER = logging.getLogger(__name__)
-
 from dcacheclient.api.v1 import alarms
 from dcacheclient.api.v1 import billing
 from dcacheclient.api.v1 import cells
@@ -22,15 +18,20 @@ from dcacheclient.api.v1 import transfers
 from dcacheclient.api.v1 import events
 from dcacheclient.common.utils import full_path
 
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+LOGGER = logging.getLogger(__name__)
+
+
 class Client(object):
     """
     Client for the dCache API.
     """
 
     def __init__(self, url, session=None, username=None, password=None, certificate=None,
-                private_key=None, x509_proxy=None, no_check_certificate=True,
-                ca_certificate=None, ca_directory=None, timeout=None,
-                version="v1"):
+                 private_key=None, x509_proxy=None, no_check_certificate=True,
+                 ca_certificate=None, ca_directory=None, timeout=None,
+                 version="v1"):
         """
         :param string url: A user-supplied endpoint URL for the dCache service.
                            http(s)://$HOST:$PORT/
@@ -56,7 +57,7 @@ class Client(object):
         self.password = password
         self.certificate = certificate
         self.private_key = private_key
-        self.x509_proxy= private_key
+        self.x509_proxy = private_key
         self.no_check_certificate = no_check_certificate
         self.ca_certificate = ca_certificate
         self.ca_directory = ca_directory
@@ -92,9 +93,6 @@ class Client(object):
         else:
             self.session = session
 
-# % for imp in imports:
-#  self.${imp} = ${imp}.${imp}Api(client=self)
-# % endfor
         self.alarms = alarms.alarmsApi(client=self)
         self.billing = billing.billingApi(client=self)
         self.cells = cells.cellsApi(client=self)
@@ -106,7 +104,6 @@ class Client(object):
         self.spacemanager = spacemanager.spacemanagerApi(client=self)
         self.transfers = transfers.transfersApi(client=self)
         self.events = events.eventsApi(client=self)
-
 
     def call_api(self, args, url, operation='get', params=None, data=None):
         '''
@@ -137,3 +134,6 @@ class Client(object):
         LOGGER.error('response.text: %s', response.text)
         return False
 
+    def close(self):
+        if self.session:
+            self.session.close()

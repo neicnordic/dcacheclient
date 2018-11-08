@@ -10,14 +10,15 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 LOGGER = logging.getLogger(__name__)
 
+
 class identityApi(object):
     """
+    identity Api class.
     """
 
     def __init__(self, client):
         self.client = client
 
-    
     def get_user_attributes(self, **kwargs):
         """
         Provide information about the current user.
@@ -29,7 +30,10 @@ class identityApi(object):
         for attr in attrs:
             params[attr] = kwargs.get(attr)
         url = self.client.url + '/api/v1' + '/user'.format(**kwargs)
-        response = self.client.call_api(kwargs, url, data=data, params=params, operation="get")
+        response = self.client.call_api(
+            kwargs,
+            url,
+            data=data,
+            params=params,
+            operation="get")
         return response
-    
-

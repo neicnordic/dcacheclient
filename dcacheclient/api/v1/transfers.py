@@ -10,14 +10,15 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 LOGGER = logging.getLogger(__name__)
 
+
 class transfersApi(object):
     """
+    transfers Api class.
     """
 
     def __init__(self, client):
         self.client = client
 
-    
     def get_transfers(self, **kwargs):
         """
         Provide a list of all client-initiated transfers that are either queued or currently running.  Internal (pool-to-pool) transfers are excluded.
@@ -29,7 +30,10 @@ class transfersApi(object):
         for attr in attrs:
             params[attr] = kwargs.get(attr)
         url = self.client.url + '/api/v1' + '/transfers'.format(**kwargs)
-        response = self.client.call_api(kwargs, url, data=data, params=params, operation="get")
+        response = self.client.call_api(
+            kwargs,
+            url,
+            data=data,
+            params=params,
+            operation="get")
         return response
-    
-
