@@ -24,7 +24,7 @@ pip install git+https://github.com/vingar/dcacheclient.git
 
 
 
-## Getting Started
+## Getting Started with the `dcache-admin` command line
 
 To enable completion:
 
@@ -38,6 +38,16 @@ Then:
 
 ```
 dcache-admin --help
+```
+
+## Python Client Apis
+
+```
+>>> from dcacheclient.client import Client
+>>> dcache = Client(url='https://srm.ndgf.org:3880')
+>>> dcache.identity.get_user_attributes()
+{'status': 'ANONYMOUS'}
+>>> dcache.close()
 ```
 
 
