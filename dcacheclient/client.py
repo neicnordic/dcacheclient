@@ -114,7 +114,8 @@ class Client(object):
             'post': self.session.post,
             'delete': self.session.delete,
             'head': self.session.head,
-            'options': self.session.options}
+            'options': self.session.options,
+            'patch': self.session.patch}
         LOGGER.debug('operation: %s', operation)
         LOGGER.debug('url: %s', url)
         LOGGER.debug('params: %s', params)
