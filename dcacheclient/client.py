@@ -57,7 +57,7 @@ class Client(object):
         self.password = password
         self.certificate = certificate
         self.private_key = private_key
-        self.x509_proxy = private_key
+        self.x509_proxy = x509_proxy
         self.no_check_certificate = no_check_certificate
         self.ca_certificate = ca_certificate
         self.ca_directory = ca_directory
@@ -65,19 +65,22 @@ class Client(object):
 
         if not session:
             self.session = requests.Session()
+
             if self.username and self.password:
                 LOGGER.debug('HTTP basic authentication: %s' % (self.username))
                 self.session.auth = (self.username + '#admin', self.password)
-            elif self.certificate and self.private_key:
+
+            if self.certificate and self.private_key:
                 LOGGER.debug('HTTPS X.509 grid authentication: (%s,%s)' % (self.certificate, self.private_key))
                 self.session.cert = (
                     full_path(self.certificate),
                     full_path(self.private_key))
-            elif self.x509_proxy:
+#            else:
+#                LOGGER.debug('ANONYMOUS authentication')
+
+            if self.x509_proxy:
                 LOGGER.debug('HTTPS X.509 grid proxy authentication: %s' % (self.x509_proxy))
                 self.session.cert = full_path(self.x509_proxy)
-            else:
-                LOGGER.debug('ANONYMOUS authentication')
 
             if self.no_check_certificate:
                 LOGGER.debug('no_check_certificate: False')
@@ -118,10 +121,16 @@ class Client(object):
             'patch': self.session.patch}
         LOGGER.debug('operation: %s', operation)
         LOGGER.debug('url: %s', url)
+        LOGGER.debug('session.cert: %s', self.session.cert)
         LOGGER.debug('params: %s', params)
         LOGGER.debug('data: %s', data)
-        response = operation_mapping[operation](url, params=params, data=data, timeout=self.timeout)
+        response = operation_mapping[operation](
+            url,
+            params=params,
+            json=data,
+            timeout=self.timeout)
         LOGGER.debug('response.url: %s', response.url)
+        LOGGER.debug('response.headers: %s', response.headers)
         LOGGER.debug('response.status_code: %d', response.status_code)
         LOGGER.debug('response.text: %s', response.text)
 
@@ -129,12 +138,11 @@ class Client(object):
             return response.json()
 
         if operation in ('post') and response.status_code == 201:
-            return True
+            return response
 
         LOGGER.error('response.status_code: %d', response.status_code)
         LOGGER.error('response.text: %s', response.text)
         return False
 
     def close(self):
-        if self.session:
-            self.session.close()
+        self.session and self.session.close()

@@ -17,6 +17,7 @@ from argcomplete import warn
 from requests.packages.urllib3 import disable_warnings
 
 from dcacheclient import client
+from dcacheclient.sync import panoptes
 
 ROOTLOGGER = logging.getLogger('')
 logging.basicConfig(
@@ -851,6 +852,18 @@ def bring_online(args):
         response = dcache.namespace.bring_online(path=args.path)
         print_response(response)
 
+def sync_storage(args):
+    """
+    Synchronise storage.
+    """
+    LOGGER.debug('args: %s' % str(args))
+    with get_client(args) as dcache:
+        response = panoptes.main(
+            path=args.path,
+            destination=args.destination,
+            client=dcache)
+        print_response(response)
+
 
 def get_parser(config):
     '''
@@ -1586,6 +1599,17 @@ If action is 'qos' then the value of the JSON object 'target' item describes the
         help='Stage file or bring a file online.')
     bringonline_parser.add_argument('--path', required=True, help="""Path of file to stage.""", action='store').completer = path_completer
     bringonline_parser.set_defaults(func=bring_online)
+
+    # The sync subparser
+    sync_parser = subparsers.add_parser(
+        'sync',
+        help='Synchronise storage')
+    sync_parser.set_defaults(func=sync_storage)
+    sync_parser.add_argument('--path', default=None, metavar="PATH", required=True,
+                        help="Subscribe to events on PATH.")
+    sync_parser.add_argument(
+        '--destination', dest="destination", required=True,
+        help="The destination url.")
 
     return oparser
 

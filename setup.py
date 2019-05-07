@@ -17,12 +17,14 @@ VERSION = "0.0.2"
 # http://pypi.python.org/pypi/setuptools
 
 REQUIRES = [
-    "urllib3 >= 1.15",
+    "urllib3 >= 1.23",
     "six >= 1.10",
-    "requests >= 2.19.1",
+    "requests >= 2.6.0",
     "certifi",
     "python-dateutil",
-    "argcomplete >= 1.9.4"]
+    "argcomplete >= 1.9.4",
+    "sseclient",
+    "rucio-clients"]
 
 setup(
     name=NAME,
@@ -38,6 +40,6 @@ setup(
     User and administration interaction with dCache  # noqa: E501
     """,
     entry_points={
-        'console_scripts': ['dcache-admin=dcacheclient.dcache_admin:main']
-        },
+        'console_scripts': ['dcache-admin=dcacheclient.dcache_admin:main',]
+    },
 )
