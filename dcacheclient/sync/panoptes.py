@@ -1,12 +1,20 @@
 import json
 import logging
 import requests
+import traceback
+import time
 
-#  try:
-#     from queue import Queue
-#  except ImportError:
-#     import Queue as queue
-# from threading import Thread
+try:
+    from queue import Queue
+except ImportError:
+    import Queue
+
+from threading import Thread
+
+try:
+    from urlparse import urljoin
+except:
+    from urllib.parse import urljoin
 
 from sseclient import SSEClient
 
@@ -27,16 +35,41 @@ def _configure_logging():
     _LOGGER.addHandler(ch)
 
 
-def main(path, destination, client):
+def do_replication(session, new_files):
+    while True:
+        try:
+            source_url, destination_url = new_files.get()
+            _LOGGER.info(source_url)
+            _LOGGER.info(destination_url)
+            for _ in range(10):
+                response = session.get(source_url, headers={'Want-Digest': 'adler32'})
+                if response.status_code == 200:
+                    break
+                time.sleep(0.1)
+            _LOGGER.info(response.headers)
+            adler32 = response.headers['Digest'].replace('adler32=', '')
+            bytes = response.headers['Content-Length']
+#            replica  = {
+#                'pfn': new_file,
+#                'bytes': int(bytes),
+#                'adler32': adler32}
+        except:
+            _LOGGER.error(traceback.format_exc())
+
+        finally:
+            new_files.task_done()
+
+
+def main(path, source, destination, client):
     '''
     main function
     '''
     _configure_logging()
 
-#    new_files = Queue(maxsize=0)
-#    worker = Thread(target=do_stuff, args=(new_files, storage, rse, scope, proxy))
-#    worker.setDaemon(True)
-#    worker.start()
+    new_files = Queue(maxsize=0)
+    worker = Thread(target=do_replication, args=(client.session, new_files,))
+    worker.setDaemon(True)
+    worker.start()
 
     while True:
         response = client.events.register()
@@ -57,18 +90,12 @@ def main(path, destination, client):
                 data = json.loads(msg.data)
                 if data['event']['mask'] == ['IN_CREATE']:
                     name = data['event']['name']
-                    source_url = 'https://' + name
+                    source_url = urljoin(source, name)
                     _LOGGER.info('New file detected: ' + source_url)
-                    destination_url = 'https://' + name
+                    destination_url = urljoin(destination, name)
                     _LOGGER.info('Request to copy it to: ' + destination_url)
-#        if data['event']['mask'] == ['IN_ATTRIB']:
-#            # new file
-#            name = data['event']['name']
-#            new_file = storage + path + '/' + name
-#            _LOGGER.info('New file detected: ' + new_file)
-#            new_files.put((name, new_file))
+                    new_files.put((source_url, destination_url))
         except requests.exceptions.HTTPError as exc:
             _LOGGER.error(str(exc))
-            if exc.response.status_code != 404:
-                raise
+#           raise
             _LOGGER.info('Re-register and Re-subscribe to channel')

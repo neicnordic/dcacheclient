@@ -860,6 +860,7 @@ def sync_storage(args):
     with get_client(args) as dcache:
         response = panoptes.main(
             path=args.path,
+            source=args.source,
             destination=args.destination,
             client=dcache)
         print_response(response)
@@ -1610,6 +1611,9 @@ If action is 'qos' then the value of the JSON object 'target' item describes the
     sync_parser.add_argument(
         '--destination', dest="destination", required=True,
         help="The destination url.")
+    sync_parser.add_argument(
+        '--source', dest="source", required=True,
+        help="The source url.")
 
     return oparser
 
