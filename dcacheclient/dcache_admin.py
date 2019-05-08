@@ -852,6 +852,7 @@ def bring_online(args):
         response = dcache.namespace.bring_online(path=args.path)
         print_response(response)
 
+
 def sync_storage(args):
     """
     Synchronise storage.
@@ -862,7 +863,8 @@ def sync_storage(args):
             path=args.path,
             source=args.source,
             destination=args.destination,
-            client=dcache)
+            client=dcache,
+            fts_host=args.fts_host)
         print_response(response)
 
 
@@ -1606,14 +1608,19 @@ If action is 'qos' then the value of the JSON object 'target' item describes the
         'sync',
         help='Synchronise storage')
     sync_parser.set_defaults(func=sync_storage)
-    sync_parser.add_argument('--path', default=None, metavar="PATH", required=True,
-                        help="Subscribe to events on PATH.")
+    sync_parser.add_argument(
+        '--path', default=None, metavar="PATH", required=True,
+        help="Subscribe to events on PATH.")
     sync_parser.add_argument(
         '--destination', dest="destination", required=True,
         help="The destination url.")
     sync_parser.add_argument(
         '--source', dest="source", required=True,
         help="The source url.")
+    sync_parser.add_argument(
+        '--fts_host', dest="fts_host", required=True,
+        help="The FTS host name.")
+
 
     return oparser
 
@@ -1626,6 +1633,8 @@ def main():
     args = oparser.parse_args(sys.argv[1:])
     if args.debug:
         ROOTLOGGER.setLevel(logging.DEBUG)
+    else:
+        ROOTLOGGER.setLevel(logging.INFO)
 
     disable_warnings()
     if args.func.__name__ == 'print_help':

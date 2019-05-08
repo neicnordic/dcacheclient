@@ -1,3 +1,7 @@
+"""
+   panoptse: Synchronise storage.
+"""
+
 import json
 import logging
 import requests
@@ -18,54 +22,61 @@ except:
 
 from sseclient import SSEClient
 
-
-_DEFAULT_LOG_FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-
 _LOGGER = logging.getLogger(__name__)
 
 
-def _configure_logging():
-    _LOGGER.setLevel(logging.DEBUG)
+def submit_transfer_to_fts(source_url, bytes, adler32, destination_url, proxy, fts_host):
+    transfer_request = {'files': [{
+        'sources': [source_url],
+        'destinations': [destination_url],
+        'filesize': bytes,
+        'checksum': 'adler32:%s' % adler32}],
+        'params': {'verify_checksum': True}}
 
-    ch = logging.StreamHandler()
+    # response = session.get('%s/api-docs/schema/submit' % fts_host)
+    # schema = response.json()
+    # from jsonschema import validate
+    # print (validate(instance=transfer_request, schema=schema))
 
-    formatter = logging.Formatter(_DEFAULT_LOG_FORMAT)
-    ch.setFormatter(formatter)
-
-    _LOGGER.addHandler(ch)
+    response = requests.post('%s/jobs' % fts_host,
+                            json=transfer_request,
+                            cert=proxy,
+                            headers={'Content-Type': 'application/json'})
+    # if response.status_code == 200:
+    _LOGGER.info("Transfer from {} to {} has been submitted to FTS ({})".format(source_url, destination_url, response.content))
 
 
 def do_replication(session, new_files):
     while True:
         try:
-            source_url, destination_url = new_files.get()
-            _LOGGER.info(source_url)
-            _LOGGER.info(destination_url)
+            source_url, destination_url, fts_host = new_files.get()
+            # Workaround: slight risk the client receives the `IN_CLOSE_WRITE`
+            # event before the upload is completed. TBR.
             for _ in range(10):
                 response = session.get(source_url, headers={'Want-Digest': 'adler32'})
                 if response.status_code == 200:
                     break
                 time.sleep(0.1)
-            _LOGGER.info(response.headers)
+            _LOGGER.debug(response.headers)
             adler32 = response.headers['Digest'].replace('adler32=', '')
-            bytes = response.headers['Content-Length']
-#            replica  = {
-#                'pfn': new_file,
-#                'bytes': int(bytes),
-#                'adler32': adler32}
+            bytes = int(response.headers['Content-Length'])
+            submit_transfer_to_fts(
+                source_url=source_url,
+                bytes=bytes,
+                adler32=adler32,
+                destination_url=destination_url,
+                proxy=session.cert,
+                fts_host=fts_host)
         except:
             _LOGGER.error(traceback.format_exc())
-
         finally:
             new_files.task_done()
 
 
-def main(path, source, destination, client):
+def main(path, source, destination, client, fts_host):
     '''
     main function
     '''
-    _configure_logging()
-
     new_files = Queue(maxsize=0)
     worker = Thread(target=do_replication, args=(client.session, new_files,))
     worker.setDaemon(True)
@@ -80,21 +91,21 @@ def main(path, source, destination, client):
 
         response = client.events.subscribe(type='inotify', id=id, body={"path": path})
         watch = response.headers['Location']
-        _LOGGER.info("Watch on {} is {}".format(path, watch))
+        _LOGGER.debug("Watch on {} is {}".format(path, watch))
         messages = SSEClient(channel, session=client.session)
         try:
             for msg in messages:
-                _LOGGER.info("Event {}:".format(msg.id))
-                _LOGGER.info("    event: {}".format(msg.event))
-                _LOGGER.info("    data: {}".format(msg.data))
+                _LOGGER.debug("Event {}:".format(msg.id))
+                _LOGGER.debug("    event: {}".format(msg.event))
+                _LOGGER.debug("    data: {}".format(msg.data))
                 data = json.loads(msg.data)
-                if data['event']['mask'] == ['IN_CREATE']:
+                if data['event']['mask'] == ['IN_CLOSE_WRITE']:
                     name = data['event']['name']
                     source_url = urljoin(source, name)
                     _LOGGER.info('New file detected: ' + source_url)
                     destination_url = urljoin(destination, name)
                     _LOGGER.info('Request to copy it to: ' + destination_url)
-                    new_files.put((source_url, destination_url))
+                    new_files.put((source_url, destination_url, fts_host))
         except requests.exceptions.HTTPError as exc:
             _LOGGER.error(str(exc))
 #           raise

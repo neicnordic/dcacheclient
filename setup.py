@@ -17,14 +17,15 @@ VERSION = "0.0.2"
 # http://pypi.python.org/pypi/setuptools
 
 REQUIRES = [
-    "urllib3 >= 1.23",
+#   "urllib3 >= 1.23",
     "six >= 1.10",
     "requests >= 2.6.0",
+    "urllib3<1.25,>=1.21.1",
     "certifi",
     "python-dateutil",
     "argcomplete >= 1.9.4",
-    "sseclient",
-    "rucio-clients"]
+    "sseclient"]
+#    "rucio-clients"]
 
 setup(
     name=NAME,
