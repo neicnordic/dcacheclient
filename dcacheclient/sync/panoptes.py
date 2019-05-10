@@ -1,9 +1,10 @@
 """
-   panoptse: Synchronise storage.
+   panoptes: Service to synchronise storage.
 """
 
 import json
 import logging
+import os
 import requests
 import traceback
 import time
@@ -16,9 +17,9 @@ except ImportError:
 from threading import Thread
 
 try:
-    from urlparse import urljoin
+    from urlparse import urljoin, urlparse
 except:
-    from urllib.parse import urljoin
+    from urllib.parse import urljoin, urlparse
 
 from sseclient import SSEClient
 
@@ -53,6 +54,8 @@ def do_replication(session, new_files):
             # Workaround: slight risk the client receives the `IN_CLOSE_WRITE`
             # event before the upload is completed. TBR.
             for _ in range(10):
+                # Get this info with dav
+                # Can use the namespace operation later
                 response = session.get(source_url, headers={'Want-Digest': 'adler32'})
                 if response.status_code == 200:
                     break
@@ -73,7 +76,7 @@ def do_replication(session, new_files):
             new_files.task_done()
 
 
-def main(path, source, destination, client, fts_host):
+def main(root_path, source, destination, client, fts_host, recursive):
     '''
     main function
     '''
@@ -82,6 +85,21 @@ def main(path, source, destination, client, fts_host):
     worker.setDaemon(True)
     worker.start()
 
+    paths = [os.path.normpath(root_path + '/' + urlparse(source).path)]
+    if recursive:
+        directories = [urlparse(source).path]
+        _LOGGER.debug("Scan {}".format(urlparse(source).path))
+        while directories:
+            prefix = directories.pop()
+            response = client.namespace.get_file_attributes(path=prefix, children=True)
+            for entry in response["children"]:
+                if entry["fileType"] == "DIR":
+                    directory = os.path.normpath(prefix + '/' + entry["fileName"])
+                    _LOGGER.debug("Directory found {}".format(directory))
+                    directories.append(directory)
+                    paths.append(os.path.normpath(root_path + '/' + directory))
+
+    watches = {}
     while True:
         response = client.events.register()
         channel = response.headers['Location']
@@ -89,9 +107,12 @@ def main(path, source, destination, client, fts_host):
 
         id = channel[channel.find('/api/v1/events/channels/') + 24:]
 
-        response = client.events.subscribe(type='inotify', id=id, body={"path": path})
-        watch = response.headers['Location']
-        _LOGGER.debug("Watch on {} is {}".format(path, watch))
+        for path in paths:
+            response = client.events.subscribe(type='inotify', id=id, body={"path": path})
+            watch = response.headers['Location']
+            _LOGGER.debug("Watch on {} is {}".format(path, watch))
+            watches[watch] = path
+
         messages = SSEClient(channel, session=client.session)
         try:
             for msg in messages:
@@ -101,11 +122,20 @@ def main(path, source, destination, client, fts_host):
                 data = json.loads(msg.data)
                 if data['event']['mask'] == ['IN_CLOSE_WRITE']:
                     name = data['event']['name']
-                    source_url = urljoin(source, name)
+                    full_path = watches[data["subscription"]]
+                    short_path = os.path.relpath(full_path, root_path)
+
+                    source_url = urljoin(source, os.path.normpath('/'+ short_path + '/' + name))
                     _LOGGER.info('New file detected: ' + source_url)
-                    destination_url = urljoin(destination, name)
+                    destination_url = urljoin(destination, os.path.normpath('/'+ short_path + '/' + name))
                     _LOGGER.info('Request to copy it to: ' + destination_url)
-                    new_files.put((source_url, destination_url, fts_host))
+
+#                    new_files.put((source_url, destination_url, fts_host))
+                elif data['event']['mask'] == ["IN_CREATE","IN_ISDIR"]:
+                    name = data['event']['name']
+                    dir_url = urljoin(source, name)
+                    _LOGGER.info('New directory detected: ' + dir_url)
+
         except requests.exceptions.HTTPError as exc:
             _LOGGER.error(str(exc))
 #           raise

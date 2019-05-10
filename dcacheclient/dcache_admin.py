@@ -860,11 +860,12 @@ def sync_storage(args):
     LOGGER.debug('args: %s' % str(args))
     with get_client(args) as dcache:
         response = panoptes.main(
-            path=args.path,
+            root_path=args.root_path,
             source=args.source,
             destination=args.destination,
             client=dcache,
-            fts_host=args.fts_host)
+            fts_host=args.fts_host,
+            recursive=args.recursive)
         print_response(response)
 
 
@@ -1609,8 +1610,8 @@ If action is 'qos' then the value of the JSON object 'target' item describes the
         help='Synchronise storage')
     sync_parser.set_defaults(func=sync_storage)
     sync_parser.add_argument(
-        '--path', default=None, metavar="PATH", required=True,
-        help="Subscribe to events on PATH.")
+        '--root_path', default=None, required=True,
+        help="The root path.")
     sync_parser.add_argument(
         '--destination', dest="destination", required=True,
         help="The destination url.")
@@ -1620,8 +1621,12 @@ If action is 'qos' then the value of the JSON object 'target' item describes the
     sync_parser.add_argument(
         '--fts_host', dest="fts_host", required=True,
         help="The FTS host name.")
-
-
+    sync_parser.add_argument(
+        '--recursive', '-r',
+        action='store_const',
+        const=True,
+        default=False,
+        help='Recursively sync subdirectories.')
     return oparser
 
 
