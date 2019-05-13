@@ -123,7 +123,7 @@ def main(root_path, source, destination, client, fts_host, recursive):
                 _LOGGER.debug("    event: {}".format(msg.event))
                 _LOGGER.debug("    data: {}".format(msg.data))
                 data = json.loads(msg.data)
-                if data['event']['mask'] == ['IN_CLOSE_WRITE']:
+                if 'event' in data and data['event']['mask'] == ['IN_CLOSE_WRITE']:
                     name = data['event']['name']
                     full_path = watches[data["subscription"]]
                     short_path = os.path.relpath(full_path, root_path)[len(base_path) - 1:]
@@ -134,11 +134,17 @@ def main(root_path, source, destination, client, fts_host, recursive):
                     _LOGGER.info('Request to copy it to: ' + destination_url)
 
                     new_files.put((source_url, destination_url, fts_host))
-                elif data['event']['mask'] == ["IN_CREATE", "IN_ISDIR"]:
+                elif 'event' in data and data['event']['mask'] == ["IN_CREATE", "IN_ISDIR"]:
                     name = data['event']['name']
-                    dir_url = urljoin(source, name)
-                    _LOGGER.info('New directory detected: ' + dir_url)
-                    # to do: subscriptions
+                    full_path = watches[data["subscription"]]
+                    dir_path = os.path.normpath(full_path + '/' + name)
+                    _LOGGER.info('New directory detected: ' + dir_path)
+                    response = client.events.subscribe(type='inotify', id=id, body={"path": dir_path})
+                    watch = response.headers['Location']
+                    _LOGGER.debug("Watch on {} is {}".format(dir_path, watch))
+                    watches[watch] = dir_path
+                    paths.append(dir_path)
+
         except requests.exceptions.HTTPError as exc:
             _LOGGER.error(str(exc))
 #           raise
