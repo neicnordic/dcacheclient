@@ -39,10 +39,11 @@ def submit_transfer_to_fts(source_url, bytes, adler32, destination_url, proxy, f
     # from jsonschema import validate
     # print (validate(instance=transfer_request, schema=schema))
 
-    response = requests.post('%s/jobs' % fts_host,
-                            json=transfer_request,
-                            cert=proxy,
-                            headers={'Content-Type': 'application/json'})
+    response = requests.post(
+        '%s/jobs' % fts_host,
+        json=transfer_request,
+        cert=proxy,
+        headers={'Content-Type': 'application/json'})
     # if response.status_code == 200:
     _LOGGER.info("Transfer from {} to {} has been submitted to FTS ({})".format(source_url, destination_url, response.content))
 
@@ -56,11 +57,12 @@ def do_replication(session, new_files):
             for _ in range(10):
                 # Get this info with dav
                 # Can use the namespace operation later
-                response = session.get(source_url, headers={'Want-Digest': 'adler32'})
+                response = session.head(source_url, headers={'Want-Digest': 'adler32'})
                 if response.status_code == 200:
                     break
                 time.sleep(0.1)
             _LOGGER.debug(response.headers)
+
             adler32 = response.headers['Digest'].replace('adler32=', '')
             bytes = int(response.headers['Content-Length'])
             submit_transfer_to_fts(
@@ -85,10 +87,11 @@ def main(root_path, source, destination, client, fts_host, recursive):
     worker.setDaemon(True)
     worker.start()
 
-    paths = [os.path.normpath(root_path + '/' + urlparse(source).path)]
+    base_path = urlparse(source).path
+    paths = [os.path.normpath(root_path + '/' + base_path)]
     if recursive:
         directories = [urlparse(source).path]
-        _LOGGER.debug("Scan {}".format(urlparse(source).path))
+        _LOGGER.debug("Scan {}".format(base_path))
         while directories:
             prefix = directories.pop()
             response = client.namespace.get_file_attributes(path=prefix, children=True)
@@ -123,19 +126,19 @@ def main(root_path, source, destination, client, fts_host, recursive):
                 if data['event']['mask'] == ['IN_CLOSE_WRITE']:
                     name = data['event']['name']
                     full_path = watches[data["subscription"]]
-                    short_path = os.path.relpath(full_path, root_path)
-
-                    source_url = urljoin(source, os.path.normpath('/'+ short_path + '/' + name))
+                    short_path = os.path.relpath(full_path, root_path)[len(base_path) - 1:]
+                    source_url = urljoin(source, os.path.normpath(short_path + '/' + name))
                     _LOGGER.info('New file detected: ' + source_url)
-                    destination_url = urljoin(destination, os.path.normpath('/'+ short_path + '/' + name))
+                    print (source_url[len(source):])
+                    destination_url = urljoin(destination, os.path.normpath(source_url[len(source):]))
                     _LOGGER.info('Request to copy it to: ' + destination_url)
 
-#                    new_files.put((source_url, destination_url, fts_host))
-                elif data['event']['mask'] == ["IN_CREATE","IN_ISDIR"]:
+                    new_files.put((source_url, destination_url, fts_host))
+                elif data['event']['mask'] == ["IN_CREATE", "IN_ISDIR"]:
                     name = data['event']['name']
                     dir_url = urljoin(source, name)
                     _LOGGER.info('New directory detected: ' + dir_url)
-
+                    # to do: subscriptions
         except requests.exceptions.HTTPError as exc:
             _LOGGER.error(str(exc))
 #           raise
