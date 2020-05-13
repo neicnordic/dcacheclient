@@ -22,6 +22,7 @@ except:
     from urllib.parse import urljoin, urlparse
 
 from sseclient import SSEClient
+from rucio.client import Client
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -48,6 +49,52 @@ def submit_transfer_to_fts(source_url, bytes, adler32, destination_url, proxy, f
     _LOGGER.info("Transfer from {} to {} has been submitted to FTS ({})".format(source_url, destination_url, response.content))
 
 
+def submit_transfer_to_rucio(name, source_url, bytes, adler32):
+    _LOGGER.info("Here")
+    # transfer pre-prod -> prod -> snic
+    rucio_client = Client()
+
+    # TODO: scope should be extracted from the path: Top directory
+    scope = 'functional_tests'
+
+    try:
+        replica = {
+            'scope': scope,
+            'name': name,
+            'pfn': source_url,
+            'bytes': int(bytes),
+            'adler32': adler32}
+
+        _LOGGER.debug('Register replica {}'.format(str(replica)))
+
+        rse = 'NDGF-PREPROD'
+        account = 'garvin'
+
+        rucio_client.add_replicas(
+            rse=rse,
+            files=[replica])
+
+        kwargss = [
+            {'rse_expression': 'NDGF-PREPROD', 'lifetime': 86400},
+            {'rse_expression': 'NDGF', 'source_replica_expression': 'NDGF-PREPROD',
+            'lifetime': 86400},
+            {'rse_expression': 'SNIC', 'source_replica_expression': 'NDGF',
+            'lifetime': 86400}]
+
+        for kwargs in kwargss:
+            rule = rucio_client.add_replication_rule(
+                dids=[{'scope': scope, 'name': name}],
+                account=account,
+                copies=1,
+                grouping='NONE',
+                weight=None,
+                locked=False,
+                **kwargs)
+            _LOGGER.info('Added rule for file to {}: {}'.format(kwargs, rule))
+    except:
+        _LOGGER.error(traceback.format_exc())
+
+
 def do_replication(session, new_files):
     while True:
         try:
@@ -65,6 +112,16 @@ def do_replication(session, new_files):
 
             adler32 = response.headers['Digest'].replace('adler32=', '')
             bytes = int(response.headers['Content-Length'])
+
+
+#            submit_transfer_to_rucio(
+#                name=name,
+#                source_url=source_url,
+#                bytes=bytes,
+#                adler32=adler32
+#            )
+
+
             submit_transfer_to_fts(
                 source_url=source_url,
                 bytes=bytes,
