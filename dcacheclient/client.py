@@ -5,6 +5,7 @@ dCache client library.
 import requests
 import logging
 
+from dcacheclient import oidc
 from dcacheclient.api.v1 import alarms
 from dcacheclient.api.v1 import billing
 from dcacheclient.api.v1 import cells
@@ -31,7 +32,7 @@ class Client(object):
     def __init__(self, url, session=None, username=None, password=None, certificate=None,
                  private_key=None, x509_proxy=None, no_check_certificate=True,
                  ca_certificate=None, ca_directory=None, timeout=None,
-                 version="v1"):
+                 oidc_agent_account=None, version="v1"):
         """
         :param string url: A user-supplied endpoint URL for the dCache service.
                            http(s)://$HOST:$PORT/
@@ -50,6 +51,7 @@ class Client(object):
         :param ca_certificate: CA certificate to verify peer against (SSL).
         :param ca_directory: CA directory to verify peer against (SSL).
         :param timeout: socket read timeout value, passed directly to the requests library.
+        :param oidc_agent_account: the oidc-agent account name from which to get the access token.
         :param string version: The version of API to use.
         """
         self.url = url
@@ -69,6 +71,9 @@ class Client(object):
             if self.username and self.password:
                 LOGGER.debug('HTTP basic authentication: %s' % (self.username))
                 self.session.auth = (self.username + '#admin', self.password)
+
+            if oidc_agent_account:
+                self.session.auth = oidc.OidcAuth(oidc_agent_account)
 
             if self.certificate and self.private_key:
                 LOGGER.debug('HTTPS X.509 grid authentication: (%s,%s)' % (self.certificate, self.private_key))

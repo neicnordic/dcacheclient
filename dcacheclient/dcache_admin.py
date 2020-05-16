@@ -64,7 +64,8 @@ def get_client(args):
         no_check_certificate=args.no_check_certificate,
         ca_certificate=args.ca_certificate,
         ca_directory=args.ca_directory,
-        timeout=args.timeout)
+        timeout=args.timeout,
+        oidc_agent_account=args.oidc_agent_account)
     try:
         yield dcache
     except Exception:
@@ -933,6 +934,14 @@ def get_parser(config):
         '--x509_proxy', dest='x509_proxy',
         nargs='?', const=os.environ.get('X509_USER_PROXY', '/tmp/x509up_u' + str(os.getuid())),
         help='Client X509 proxy file.')
+
+    # Options for OIDC
+    oparser.add_argument(
+        '--oidc-agent-account',
+        metavar="ACCOUNT",
+        dest='oidc_agent_account',
+        default=config.get('default', 'oidc-agent-account', fallback=None),
+        help='The name of the oidc-agent account to use when authenticating with dCache')
 
     oparser.set_defaults(func=oparser.print_help)
 

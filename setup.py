@@ -24,7 +24,8 @@ REQUIRES = [
     "certifi",
     "python-dateutil",
     "argcomplete >= 1.9.4",
-    "sseclient"]
+    "sseclient",
+    "liboidcagent >= 0.2.2"]
 #    "rucio-clients"]
 
 setup(
