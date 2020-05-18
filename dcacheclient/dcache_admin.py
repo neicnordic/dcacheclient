@@ -870,6 +870,14 @@ def sync_storage(args):
         print_response(response)
 
 
+def complete(args):
+    """
+    Print bash completion command.
+    """
+    # print ('eval "$(register-python-argcomplete my-favorite-script.py)"')
+    print(argcomplete.shellcode('dcache-admin'))
+
+
 def get_parser(config):
     '''
     Get parser.
@@ -943,9 +951,16 @@ def get_parser(config):
         default=config.get('default', 'oidc-agent-account', fallback=None),
         help='The name of the oidc-agent account to use when authenticating with dCache')
 
-    oparser.set_defaults(func=oparser.print_help)
 
+    oparser.set_defaults(func=oparser.print_help)
     subparsers = oparser.add_subparsers()
+
+    # The complete subparser
+    complete_parser = subparsers.add_parser(
+        'complete',
+        help='print bash completion command',
+        add_help=True)
+    complete_parser.set_defaults(func=complete)
 
     # The alarms subparser
     alarms_parser = subparsers.add_parser(
@@ -1640,7 +1655,7 @@ If action is 'qos' then the value of the JSON object 'target' item describes the
 
 
 def main():
-    ''' Main method '''
+    '''Main method.'''
     config = get_config()
     oparser = get_parser(config)
     argcomplete.autocomplete(oparser)
